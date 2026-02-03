@@ -1,0 +1,1012 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>猴子赛跑 - 活力版</title>
+    <style>
+        /* 全局样式 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+        
+        /* 游戏容器 */
+        #game-wrapper {
+            position: relative;
+            width: 100%;
+            max-width: 1000px;
+            aspect-ratio: 16/9;
+            background: linear-gradient(to bottom, #87CEEB 0%, #E0F7FA 100%);
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        
+        /* UI 遮罩层 */
+        .ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.4);
+            transition: opacity 0.3s;
+        }
+        
+        .ui-layer.active {
+            display: flex;
+            background: rgba(0, 0, 0, 0.6);
+            pointer-events: auto;
+        }
+        
+        /* 菜单面板 */
+        .menu-panel {
+            background: white;
+            padding: 40px;
+            border-radius: 16px;
+            text-align: center;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            max-width: 90%;
+            animation: slideIn 0.4s ease-out;
+        }
+        
+        @keyframes slideIn {
+            from { transform: translateY(-20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        
+        h1 { color: #333; margin-bottom: 10px; font-size: 2.5rem; }
+        .subtitle { color: #666; margin-bottom: 30px; font-size: 1.1rem; }
+        
+        /* 按钮样式 */
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            margin: 10px;
+            border-radius: 50px;
+            cursor: pointer;
+            font-size: 1.1rem;
+            font-weight: 600;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6); }
+        .btn:active { transform: translateY(0); }
+        
+        .btn-large { padding: 18px 40px; font-size: 1.3rem; }
+        
+        .btn-danger {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            box-shadow: 0 4px 15px rgba(245, 87, 108, 0.4);
+        }
+        
+        .btn-secondary { background: #6c757d; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+        
+        /* 速度选择器 */
+        .speed-selector {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin: 25px 0;
+        }
+        
+        .speed-btn {
+            background: #f8f9fa;
+            border: 2px solid #e9ecef;
+            color: #6c757d;
+            padding: 10px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 1rem;
+        }
+        
+        .speed-btn:hover { border-color: #667eea; color: #667eea; }
+        
+        .speed-btn.active {
+            background: #667eea;
+            border-color: #667eea;
+            color: white;
+            transform: scale(1.05);
+        }
+        
+        /* 游戏内 UI */
+        #game-ui {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            padding: 20px;
+            display: none;
+            justify-content: space-between;
+            align-items: center;
+            pointer-events: none;
+            z-index: 5;
+        }
+        
+        .score-display {
+            background: rgba(255, 255, 255, 0.9);
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #333;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .control-buttons {
+            display: flex;
+            gap: 10px;
+            pointer-events: auto;
+        }
+        
+        .control-btn {
+            background: rgba(255, 255, 255, 0.9);
+            border: none;
+            padding: 10px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: all 0.3s;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+        
+        .control-btn:hover { background: white; transform: translateY(-2px); }
+        
+        /* 提示文字 */
+        .hint-text {
+            position: absolute;
+            bottom: 30px;
+            left: 0;
+            width: 100%;
+            text-align: center;
+            color: white;
+            font-size: 1.2rem;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+            pointer-events: none;
+            animation: pulse 2s infinite;
+            display: none;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 0.8; }
+            50% { opacity: 1; }
+        }
+        
+        .hidden { display: none !important; }
+        
+        /* 响应式 */
+        @media (max-width: 768px) {
+            #game-wrapper { border-radius: 0; aspect-ratio: auto; height: 100vh; }
+            .menu-panel { padding: 30px 20px; margin: 20px; }
+            h1 { font-size: 2rem; }
+            .btn { padding: 12px 25px; font-size: 1rem; }
+            .speed-selector { flex-wrap: wrap; }
+            .hint-text { font-size: 1rem; bottom: 20px; }
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-wrapper">
+    <canvas id="gameCanvas"></canvas>
+    
+    <!-- 游戏界面 UI -->
+    <div id="game-ui">
+        <div class="score-display">
+            <span>🏆</span>
+            <span id="scoreValue">0</span>
+        </div>
+        <div class="control-buttons">
+            <button class="control-btn" id="pauseBtn">⏸️ 暂停</button>
+            <button class="control-btn" id="exitBtn">❌ 退出</button>
+        </div>
+    </div>
+    
+    <!-- 操作提示 -->
+    <div id="hintText" class="hint-text">
+        👆 上滑跳跃 | 👇 下滑蹲下
+    </div>
+    
+    <!-- 开始菜单 -->
+    <div id="startScreen" class="ui-layer active">
+        <div class="menu-panel">
+            <h1>🐵 超级猴子赛跑</h1>
+            <p class="subtitle">躲避障碍，收集金币，感受活力！</p>
+            
+            <div class="speed-selector">
+                <button class="speed-btn" data-speed="0.8">🐢 慢速</button>
+                <button class="speed-btn active" data-speed="1.2">🐇 正常</button>
+                <button class="speed-btn" data-speed="1.6">🚀 极速</button>
+            </div>
+            
+            <button class="btn btn-large" id="startBtn">🎮 开始游戏</button>
+            
+            <div style="margin-top: 30px; text-align: left; color: #666; font-size: 0.95rem;">
+                <p>🎯 <strong>游戏说明:</strong></p>
+                <p>• ⬆️ 向上滑动：跳跃躲避低障碍</p>
+                <p>• ⬇️ 向下滑动：蹲下躲避高/空障碍</p>
+                <p>• 🪙 收集金币：每个+5分</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 暂停菜单 -->
+    <div id="pauseScreen" class="ui-layer">
+        <div class="menu-panel">
+            <h2>⏸️ 游戏暂停</h2>
+            <p>当前得分: <span id="pauseScore">0</span></p>
+            <button class="btn" id="resumeBtn">▶️ 继续游戏</button>
+            <button class="btn btn-danger" id="quitBtn">❌ 退出游戏</button>
+        </div>
+    </div>
+    
+    <!-- 游戏结束 -->
+    <div id="gameOverScreen" class="ui-layer">
+        <div class="menu-panel">
+            <h2>💥 游戏结束!</h2>
+            <p>最终得分: <span id="finalScore">0</span></p>
+            <button class="btn btn-large" id="restartBtn">🔄 再玩一次</button>
+            <button class="btn btn-secondary" id="backToMenuBtn">🏠 返回菜单</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ==================== 游戏配置 ====================
+    const CONFIG = {
+        gravity: 0.8,
+        jumpForce: -16, // 稍微加大跳跃力度
+        duckDuration: 500,
+        obstaclePauseDuration: 100,
+        groundYRatio: 0.85,
+        // 猴子尺寸参数
+        baseWidth: 50,
+        baseHeight: 60,
+        duckHeight: 30
+    };
+
+    // ==================== 游戏状态 ====================
+    const GameState = {
+        MENU: 'menu',
+        PLAYING: 'playing',
+        PAUSED: 'paused',
+        GAMEOVER: 'gameover'
+    };
+
+    let currentState = GameState.MENU;
+    let score = 0;
+    let gameSpeed = 1.2;
+    let lastTime = 0;
+    let animationId = null;
+    let frames = 0; // 用于计算跑动动画
+
+    // ==================== DOM 元素 ====================
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const elements = {
+        startScreen: document.getElementById('startScreen'),
+        pauseScreen: document.getElementById('pauseScreen'),
+        gameOverScreen: document.getElementById('gameOverScreen'),
+        gameUi: document.getElementById('game-ui'),
+        hintText: document.getElementById('hintText'),
+        scoreValue: document.getElementById('scoreValue'),
+        pauseScore: document.getElementById('pauseScore'),
+        finalScore: document.getElementById('finalScore'),
+        speedBtns: document.querySelectorAll('.speed-btn'),
+        startBtn: document.getElementById('startBtn'),
+        pauseBtn: document.getElementById('pauseBtn'),
+        exitBtn: document.getElementById('exitBtn'),
+        resumeBtn: document.getElementById('resumeBtn'),
+        quitBtn: document.getElementById('quitBtn'),
+        restartBtn: document.getElementById('restartBtn'),
+        backToMenuBtn: document.getElementById('backToMenuBtn')
+    };
+
+    // ==================== 画布调整 ====================
+    function resizeCanvas() {
+        const wrapper = document.getElementById('game-wrapper');
+        canvas.width = wrapper.clientWidth;
+        canvas.height = wrapper.clientHeight;
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    // ==================== 游戏对象：活力猴子 ====================
+    let monkey = {
+        x: 100,
+        y: 0,
+        width: CONFIG.baseWidth,
+        height: CONFIG.baseHeight,
+        velocityY: 0,
+        jumping: false,
+        ducking: false,
+        duckTimer: null,
+        
+        // 动画变形因子 (用于Squash and Stretch)
+        scaleX: 1,
+        scaleY: 1,
+        
+        reset() {
+            this.y = getGroundY() - this.height;
+            this.velocityY = 0;
+            this.jumping = false;
+            this.ducking = false;
+            this.scaleX = 1;
+            this.scaleY = 1;
+            
+            if (this.duckTimer) {
+                clearTimeout(this.duckTimer);
+                this.duckTimer = null;
+            }
+        },
+        
+        jump() {
+            if (!this.jumping && !this.ducking) {
+                this.velocityY = CONFIG.jumpForce;
+                this.jumping = true;
+                
+                // 跳跃时拉伸: 变瘦变高
+                this.scaleX = 0.8;
+                this.scaleY = 1.2;
+                
+                createParticles(this.x + this.width/2, this.y + this.height, 5, '#8B4513');
+            } else if (this.ducking) {
+                this.standUp();
+                // 稍等一下再跳，避免瞬间起跳太突兀
+                setTimeout(() => {
+                   this.velocityY = CONFIG.jumpForce;
+                   this.jumping = true; 
+                   this.scaleX = 0.8; 
+                   this.scaleY = 1.2;
+                }, 50);
+            }
+        },
+        
+        duck() {
+            if (!this.jumping && !this.ducking) {
+                this.ducking = true;
+                this.height = CONFIG.duckHeight;
+                // 调整Y保持贴地
+                this.y += (CONFIG.baseHeight - CONFIG.duckHeight);
+                
+                // 蹲下时轻微挤压
+                this.scaleX = 1.1;
+                this.scaleY = 0.9;
+                
+                if (this.duckTimer) clearTimeout(this.duckTimer);
+                this.duckTimer = setTimeout(() => {
+                    this.standUp();
+                }, CONFIG.duckDuration);
+            }
+        },
+        
+        standUp() {
+            if (this.ducking) {
+                this.ducking = false;
+                this.y -= (CONFIG.baseHeight - CONFIG.duckHeight);
+                this.height = CONFIG.baseHeight;
+                this.scaleX = 1;
+                this.scaleY = 1;
+            }
+        },
+        
+        update() {
+            if (this.jumping) {
+                this.velocityY += CONFIG.gravity;
+                this.y += this.velocityY;
+                
+                // 落地检测
+                if (this.y >= getGroundY() - this.height) {
+                    // 落地瞬间挤压
+                    this.y = getGroundY() - this.height;
+                    this.velocityY = 0;
+                    this.jumping = false;
+                    
+                    this.scaleX = 1.3; // 变扁
+                    this.scaleY = 0.7; 
+                }
+            }
+            
+            // 弹性恢复逻辑
+            if (this.scaleX > 1) this.scaleX -= 0.05; // 变宽的慢慢回缩
+            if (this.scaleX < 1) this.scaleX += 0.05; // 变窄的慢慢回宽
+            if (this.scaleY > 1) this.scaleY -= 0.05; // 变高的慢慢回缩
+            if (this.scaleY < 1) this.scaleY += 0.05; // 变矮的慢慢回高
+            
+            // 限制在1.0附近，防止无限抖动
+            if (Math.abs(this.scaleX - 1) < 0.05) this.scaleX = 1;
+            if (Math.abs(this.scaleY - 1) < 0.05) this.scaleY = 1;
+        },
+        
+        draw() {
+            ctx.save();
+            
+            // 设置变形中心为底部中心
+            const centerX = this.x + this.width / 2;
+            const centerY = this.y + this.height;
+            
+            ctx.translate(centerX, centerY);
+            ctx.scale(this.scaleX, this.scaleY);
+            ctx.translate(-centerX, -centerY);
+            
+            // 绘制身体参数
+            const w = this.width;
+            const h = this.height;
+            
+            // 颜色
+            const furColor = '#8B4513'; // 棕色
+            const faceColor = '#DEB887'; // 浅棕色
+            const bellyColor = '#F5DEB3'; // 米色
+            
+            // 1. 尾巴 (在身体后面)
+            ctx.strokeStyle = furColor;
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.moveTo(this.x, this.y + h/2);
+            ctx.quadraticCurveTo(this.x - 15, this.y + h/2, this.x - 10, this.y + h - 10);
+            ctx.stroke();
+            
+            // 2. 脚 (左, 右) - 动态摆动
+            const legOffset = this.jumping ? 0 : Math.sin(frames * 0.2) * 10;
+            drawLimb(ctx, this.x + 10, this.y + h - 5, -legOffset, true, furColor); // 左脚
+            drawLimb(ctx, this.x + w - 10, this.y + h - 5, legOffset, true, furColor); // 右脚
+            
+            // 3. 手 (左, 右) - 动态摆动
+            const armOffset = this.jumping ? (this.velocityY > 0 ? 20 : -20) : Math.sin(frames * 0.2) * 10;
+            drawLimb(ctx, this.x + 5, this.y + h/2, -armOffset, false, furColor); // 左手
+            drawLimb(ctx, this.x + w - 5, this.y + h/2, armOffset, false, furColor); // 右手
+            
+            // 4. 身体主体 (圆角矩形)
+            ctx.fillStyle = furColor;
+            roundRect(ctx, this.x, this.y, w, h, 10, true, false);
+            
+            // 5. 肚子 (浅色区域)
+            ctx.fillStyle = bellyColor;
+            ctx.beginPath();
+            ctx.ellipse(this.x + w/2, this.y + h/2 + 5, w/3, h/3, 0, 0, Math.PI*2);
+            ctx.fill();
+            
+            // 6. 头部
+            const headY = this.y - h/2 - 5;
+            const headW = w * 1.1;
+            const headH = h * 0.8;
+            
+            ctx.fillStyle = furColor;
+            // 头也是圆角的
+            roundRect(ctx, this.x - (headW-w)/2, headY, headW, headH, 15, true, false);
+            
+            // 7. 脸部区域
+            ctx.fillStyle = faceColor;
+            ctx.beginPath();
+            ctx.ellipse(this.x + w/2, headY + headH/2 + 5, headW/2.5, headH/2.5, 0, 0, Math.PI*2);
+            ctx.fill();
+            
+            // 8. 耳朵
+            ctx.fillStyle = furColor;
+            ctx.beginPath();
+            ctx.arc(this.x - 5, headY + 10, 8, 0, Math.PI*2); // 左耳
+            ctx.arc(this.x + w + 5, headY + 10, 8, 0, Math.PI*2); // 右耳
+            ctx.fill();
+            ctx.fillStyle = faceColor;
+            ctx.beginPath();
+            ctx.arc(this.x - 5, headY + 10, 4, 0, Math.PI*2); // 左耳内
+            ctx.arc(this.x + w + 5, headY + 10, 4, 0, Math.PI*2); // 右耳内
+            ctx.fill();
+            
+            // 9. 眼睛
+            ctx.fillStyle = 'white';
+            const eyeY = headY + headH/2 - 2;
+            const eyeXOffset = 10;
+            ctx.beginPath();
+            ctx.ellipse(this.x + w/2 - eyeXOffset, eyeY, 6, 7, 0, 0, Math.PI*2); // 左眼
+            ctx.ellipse(this.x + w/2 + eyeXOffset, eyeY, 6, 7, 0, 0, Math.PI*2); // 右眼
+            ctx.fill();
+            
+            // 眼珠 (跟随稍微转动)
+            ctx.fillStyle = 'black';
+            const pupilSize = this.ducking ? 1.5 : 3;
+            ctx.beginPath();
+            ctx.arc(this.x + w/2 - eyeXOffset, eyeY + 1, pupilSize, 0, Math.PI*2);
+            ctx.arc(this.x + w/2 + eyeXOffset, eyeY + 1, pupilSize, 0, Math.PI*2);
+            ctx.fill();
+            
+            // 10. 嘴巴
+            ctx.fillStyle = '#5D4037';
+            const mouthY = eyeY + 12;
+            if (this.ducking) {
+                // 蹲下时是扁嘴
+                ctx.beginPath();
+                ctx.ellipse(this.x + w/2, mouthY, 8, 4, 0, 0, Math.PI*2);
+                ctx.fill();
+            } else {
+                // 正常是微笑
+                ctx.beginPath();
+                ctx.arc(this.x + w/2, mouthY - 2, 8, 0, Math.PI, false);
+                ctx.fill();
+            }
+            
+            ctx.restore();
+        }
+    };
+
+    // ==================== 辅助绘图函数 ====================
+    
+    // 绘制圆角矩形
+    function roundRect(ctx, x, y, width, height, radius, fill, stroke) {
+        ctx.beginPath();
+        ctx.moveTo(x + radius, y);
+        ctx.lineTo(x + width - radius, y);
+        ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+        ctx.lineTo(x + width, y + height - radius);
+        ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+        ctx.lineTo(x + radius, y + height);
+        ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+        ctx.lineTo(x, y + radius);
+        ctx.quadraticCurveTo(x, y, x + radius, y);
+        ctx.closePath();
+        if (fill) ctx.fill();
+        if (stroke) ctx.stroke();
+    }
+
+    // 绘制肢体
+    function drawLimb(ctx, x, y, offset, isLeg, color) {
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 8;
+        ctx.lineCap = 'round';
+        
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        // 简单的摆动逻辑
+        ctx.lineTo(x + offset, y + (isLeg ? 10 : -5));
+        ctx.stroke();
+        
+        // 如果是腿，画个脚掌
+        if (isLeg) {
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.arc(x + offset, y + 10, 5, 0, Math.PI*2);
+            ctx.fill();
+        }
+    }
+
+    // ==================== 障碍物类 ====================
+    class Obstacle {
+        constructor() {
+            const rand = Math.random();
+            
+            if (rand < 0.33) {
+                this.type = 'ground_low';
+                this.width = 40;
+                this.height = 40;
+                this.color = '#4CAF50';
+                this.y = getGroundY() - this.height;
+            } else if (rand < 0.66) {
+                this.type = 'ground_high';
+                this.width = 40;
+                this.height = 90;
+                this.color = '#FF9800';
+                this.y = getGroundY() - this.height;
+            } else {
+                this.type = 'air'; // 空中障碍
+                this.width = 60;
+                this.height = 40;
+                this.color = '#F44336';
+                this.y = getGroundY() - this.height - 60; 
+            }
+            
+            this.x = canvas.width;
+            this.markedForDeletion = false;
+            
+            this.pauseTimer = 0;
+            this.isPaused = true;
+            this.pauseDuration = CONFIG.obstaclePauseDuration;
+        }
+        
+        update(deltaTime) {
+            if (this.isPaused) {
+                this.pauseTimer += deltaTime;
+                if (this.pauseTimer >= this.pauseDuration) {
+                    this.isPaused = false;
+                }
+                return;
+            }
+            
+            this.x -= 5 * gameSpeed;
+            if (this.x + this.width < 0) {
+                this.markedForDeletion = true;
+            }
+        }
+        
+        draw() {
+            ctx.save();
+            if (this.type === 'air') {
+                // 绘制悬浮物 (无人机/飞碟)
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.ellipse(this.x + this.width/2, this.y + this.height/2, this.width/2, this.height/2, 0, 0, Math.PI * 2);
+                ctx.fill();
+                // 内部闪烁
+                const time = Date.now() / 100;
+                ctx.fillStyle = `rgba(255, 255, 255, ${0.5 + Math.sin(time) * 0.5})`;
+                ctx.beginPath();
+                ctx.arc(this.x + this.width/2, this.y + this.height/2, this.width/4, 0, Math.PI * 2);
+                ctx.fill();
+            } else {
+                // 地面障碍
+                ctx.fillStyle = this.color;
+                ctx.fillRect(this.x, this.y, this.width, this.height);
+                // 纹理
+                ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+                ctx.strokeRect(this.x + 5, this.y + 5, this.width - 10, this.height - 10);
+                // 警告标志
+                if (this.type === 'ground_high') {
+                    ctx.fillStyle = '#FFEB3B';
+                    ctx.beginPath();
+                    ctx.moveTo(this.x + this.width/2, this.y + 10);
+                    ctx.lineTo(this.x + 10, this.y + 30);
+                    ctx.lineTo(this.x + this.width - 10, this.y + 30);
+                    ctx.fill();
+                }
+            }
+            ctx.restore();
+        }
+        
+        checkCollision(player) {
+            const padding = 10;
+            return (
+                player.x + padding < this.x + this.width - padding &&
+                player.x + player.width - padding > this.x + padding &&
+                player.y + padding < this.y + this.height - padding &&
+                player.y + player.height - padding > this.y + padding
+            );
+        }
+    }
+
+    // ==================== 金币类 ====================
+    class Coin {
+        constructor() {
+            this.size = 30;
+            this.x = canvas.width + Math.random() * 100;
+            const heights = [
+                getGroundY() - this.size - 10, 
+                getGroundY() - this.size - 100, 
+                getGroundY() - this.size - 150
+            ];
+            this.y = heights[Math.floor(Math.random() * heights.length)];
+            this.markedForDeletion = false;
+            this.rotation = 0;
+        }
+        
+        update() {
+            this.x -= 5 * gameSpeed;
+            this.rotation += 0.1;
+            if (this.x + this.size < 0) this.markedForDeletion = true;
+        }
+        
+        draw() {
+            ctx.save();
+            ctx.translate(this.x + this.size/2, this.y + this.size/2);
+            ctx.rotate(Math.sin(this.rotation) * 0.5);
+            
+            ctx.fillStyle = '#FFD700';
+            ctx.beginPath();
+            ctx.arc(0, 0, this.size/2, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.strokeStyle = '#FFA000';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+            
+            ctx.fillStyle = '#FFA000';
+            ctx.beginPath();
+            ctx.arc(0, 0, this.size/4, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.fillStyle = '#FFD700';
+            ctx.font = 'bold 14px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('$', 0, 0);
+            
+            ctx.restore();
+        }
+        
+        checkCollision(player) {
+            const dx = (this.x + this.size/2) - (player.x + player.width/2);
+            const dy = (this.y + this.size/2) - (player.y + player.height/2);
+            const distance = Math.sqrt(dx*dx + dy*dy);
+            return distance < (player.width/2 + this.size/2);
+        }
+    }
+
+    // ==================== 粒子系统 ====================
+    let particles = [];
+    function createParticles(x, y, count, color) {
+        for (let i = 0; i < count; i++) {
+            particles.push({
+                x: x, y: y,
+                vx: (Math.random() - 0.5) * 10,
+                vy: (Math.random() - 0.5) * 10,
+                size: Math.random() * 5 + 2,
+                color: color,
+                life: 1.0
+            });
+        }
+    }
+    function updateAndDrawParticles() {
+        for (let i = particles.length - 1; i >= 0; i--) {
+            let p = particles[i];
+            p.x += p.vx;
+            p.y += p.vy;
+            p.vy += 0.3;
+            p.life -= 0.03;
+            if (p.life <= 0) {
+                particles.splice(i, 1);
+            } else {
+                ctx.globalAlpha = p.life;
+                ctx.fillStyle = p.color;
+                ctx.fillRect(p.x, p.y, p.size, p.size);
+                ctx.globalAlpha = 1.0;
+            }
+        }
+    }
+
+    // ==================== 辅助函数 ====================
+    function getGroundY() {
+        return canvas.height * CONFIG.groundYRatio;
+    }
+
+    let obstacles = [];
+    let coins = [];
+
+    // ==================== 主循环 ====================
+    function gameLoop(timestamp) {
+        if (currentState !== GameState.PLAYING) return;
+        
+        const deltaTime = timestamp - lastTime;
+        lastTime = timestamp;
+        frames++; // 增加帧数用于动画
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // 绘制背景
+        let gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+        gradient.addColorStop(0, '#87CEEB');
+        gradient.addColorStop(1, '#E0F7FA');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // 绘制地面
+        const groundY = getGroundY();
+        ctx.fillStyle = '#8B4513';
+        ctx.fillRect(0, groundY, canvas.width, canvas.height - groundY);
+        ctx.fillStyle = '#228B22';
+        ctx.fillRect(0, groundY, canvas.width, 15);
+
+        // 更新绘制猴子
+        monkey.update();
+        monkey.draw();
+
+        // 生成障碍物
+        if (Math.random() < 0.015 * gameSpeed) {
+            const lastObs = obstacles[obstacles.length - 1];
+            if (!lastObs || canvas.width - lastObs.x > 200) {
+                obstacles.push(new Obstacle());
+            }
+        }
+
+        // 更新绘制障碍物
+        for (let i = obstacles.length - 1; i >= 0; i--) {
+            let obs = obstacles[i];
+            obs.update(deltaTime);
+            obs.draw();
+            if (obs.checkCollision(monkey)) {
+                gameOver();
+                return;
+            }
+            if (obs.markedForDeletion) {
+                obstacles.splice(i, 1);
+                score += 10;
+                updateScore();
+            }
+        }
+
+        // 生成金币
+        if (Math.random() < 0.01 * gameSpeed) {
+            const lastCoin = coins[coins.length - 1];
+            if (!lastCoin || canvas.width - lastCoin.x > 100) {
+                coins.push(new Coin());
+            }
+        }
+
+        // 更新绘制金币
+        for (let i = coins.length - 1; i >= 0; i--) {
+            let coin = coins[i];
+            coin.update();
+            coin.draw();
+            if (coin.checkCollision(monkey)) {
+                coins.splice(i, 1);
+                score += 5;
+                updateScore();
+                createParticles(coin.x, coin.y, 10, '#FFD700');
+            } else if (coin.markedForDeletion) {
+                coins.splice(i, 1);
+            }
+        }
+
+        updateAndDrawParticles();
+
+        animationId = requestAnimationFrame(gameLoop);
+    }
+
+    // ==================== 控制逻辑 ====================
+    let touchStartY = 0;
+    
+    canvas.addEventListener('touchstart', (e) => {
+        if (currentState !== GameState.PLAYING) return;
+        e.preventDefault();
+        touchStartY = e.touches[0].clientY;
+    }, {passive: false});
+
+    canvas.addEventListener('touchend', (e) => {
+        if (currentState !== GameState.PLAYING) return;
+        e.preventDefault();
+        const touchEndY = e.changedTouches[0].clientY;
+        const diff = touchStartY - touchEndY;
+        
+        if (Math.abs(diff) > 50) {
+            if (diff > 0) monkey.jump();
+            else monkey.duck();
+        }
+    }, {passive: false});
+
+    canvas.addEventListener('mousedown', (e) => {
+        if (currentState !== GameState.PLAYING) return;
+        touchStartY = e.clientY;
+    });
+    canvas.addEventListener('mouseup', (e) => {
+        if (currentState !== GameState.PLAYING) return;
+        const diff = touchStartY - e.clientY;
+        if (Math.abs(diff) > 50) {
+            if (diff > 0) monkey.jump();
+            else monkey.duck();
+        }
+    });
+
+    document.addEventListener('keydown', (e) => {
+        if (currentState !== GameState.PLAYING) return;
+        if (e.code === 'Space' || e.code === 'ArrowUp') {
+            e.preventDefault();
+            monkey.jump();
+        }
+        if (e.code === 'ArrowDown') {
+            e.preventDefault();
+            monkey.duck();
+        }
+    });
+
+    // ==================== 界面与流程控制 ====================
+    function updateScore() {
+        elements.scoreValue.textContent = score;
+    }
+
+    function switchScreen(screenId) {
+        elements.startScreen.classList.remove('active');
+        elements.pauseScreen.classList.remove('active');
+        elements.gameOverScreen.classList.remove('active');
+        elements.gameUi.style.display = 'none';
+        elements.hintText.style.display = 'none';
+        
+        if (screenId === 'start') {
+            elements.startScreen.classList.add('active');
+        } else if (screenId === 'game') {
+            elements.gameUi.style.display = 'flex';
+            elements.hintText.style.display = 'block';
+            setTimeout(() => { elements.hintText.style.display = 'none'; }, 3000);
+        } else if (screenId === 'pause') {
+            elements.pauseScreen.classList.add('active');
+            elements.pauseScore.textContent = score;
+        } else if (screenId === 'gameover') {
+            elements.gameOverScreen.classList.add('active');
+            elements.finalScore.textContent = score;
+        }
+    }
+
+    function startGame() {
+        currentState = GameState.PLAYING;
+        score = 0;
+        obstacles = [];
+        coins = [];
+        particles = [];
+        monkey.reset();
+        frames = 0;
+        updateScore();
+        switchScreen('game');
+        lastTime = performance.now();
+        gameLoop(lastTime);
+    }
+
+    function pauseGame() {
+        if (currentState === GameState.PLAYING) {
+            currentState = GameState.PAUSED;
+            cancelAnimationFrame(animationId);
+            switchScreen('pause');
+        }
+    }
+
+    function resumeGame() {
+        if (currentState === GameState.PAUSED) {
+            currentState = GameState.PLAYING;
+            switchScreen('game');
+            lastTime = performance.now();
+            gameLoop(lastTime);
+        }
+    }
+
+    function gameOver() {
+        currentState = GameState.GAMEOVER;
+        cancelAnimationFrame(animationId);
+        switchScreen('gameover');
+    }
+
+    function exitGame() {
+        currentState = GameState.MENU;
+        cancelAnimationFrame(animationId);
+        switchScreen('start');
+    }
+
+    elements.speedBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            elements.speedBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            gameSpeed = parseFloat(btn.dataset.speed);
+        });
+    });
+
+    elements.startBtn.addEventListener('click', startGame);
+    elements.pauseBtn.addEventListener('click', pauseGame);
+    elements.exitBtn.addEventListener('click', exitGame);
+    elements.resumeBtn.addEventListener('click', resumeGame);
+    elements.quitBtn.addEventListener('click', exitGame);
+    elements.restartBtn.addEventListener('click', startGame);
+    elements.backToMenuBtn.addEventListener('click', exitGame);
+
+    switchScreen('start');
+
+</script>
+</body>
+</html>
+
